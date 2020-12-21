@@ -424,6 +424,11 @@ pub trait StubXConn {
     }
 
     /// Mocked
+    fn mock_window_is_dock(&self, id: WinId) -> bool {
+	false
+    }
+    
+    /// Mocked
     fn mock_is_managed_window(&self, _: WinId) -> bool {
         true
     }
@@ -443,6 +448,11 @@ pub trait StubXConn {
         Ok(String::from(name))
     }
 
+    /// Mocked
+    fn mock_vec_prop(&self, _: u32, name: &str) -> Result<Vec<u32>> {
+        Ok(vec![])
+    }
+    
     /// Mocked
     fn mock_atom_prop(&self, id: u32, _: &str) -> Result<u32> {
         Ok(id)
@@ -575,6 +585,11 @@ where
         self.mock_window_should_float(id, floating_classes)
     }
 
+    /// Determine whether the target window is a dock
+    fn window_is_dock(&self, id: WinId) -> bool {
+	self.mock_window_is_dock(id)
+    }
+
     fn is_managed_window(&self, id: WinId) -> bool {
         self.mock_is_managed_window(id)
     }
@@ -593,6 +608,10 @@ where
 
     fn str_prop(&self, id: u32, name: &str) -> Result<String> {
         self.mock_str_prop(id, name)
+    }
+
+    fn vec_prop(&self, id: u32, name: &str) -> Result<Vec<u32>> {
+       self.mock_vec_prop(id, name)
     }
 
     fn atom_prop(&self, id: u32, name: &str) -> Result<u32> {
@@ -1337,9 +1356,4 @@ impl StubXConn for MockXConn {
     fn mock_is_managed_window(&self, id: WinId) -> bool {
         !self.unmanaged_ids.contains(&id)
     }
-    
-    fn vec_prop(&self, _: u32, _: &str) -> Result<Vec<u32>> {
-        Ok(vec![0])
-    }
-
 }
