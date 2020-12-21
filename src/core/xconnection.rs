@@ -145,6 +145,8 @@ pub(crate) enum Atom {
     NetWindowTypeDnd,
     #[strum(serialize = "_NET_WM_WINDOW_TYPE_NORMAL")]
     NetWindowTypeNormal,
+    #[strum(serialize = "_NET_WM_STRUT_PARTIAL")]
+    NetStrutPartial,    
 }
 
 // Clients with one of these window types will be auto floated
@@ -356,6 +358,13 @@ pub trait XConn {
      */
     fn atom_prop(&self, id: u32, name: &str) -> Result<u32>;
 
+    /**
+     * Fetch a vector atom prop by name for a particular window ID
+     * Can fail if the property name is invalid or we get a malformed response from xcb.
+     */
+    fn vec_prop(&self, id: u32, name: &str) -> Result<Vec<u32>>;
+
+    
     /// Intern an X atom by name and return the corresponding ID
     fn intern_atom(&self, atom: &str) -> Result<u32>;
 
@@ -820,6 +829,7 @@ impl XConn for XcbConnection {
                         .and_then(|a| {
                             let atom = a.name().to_string();
                             let is_root = e.window() == self.root;
+			    debug!("Property notify id: {} atom: {}", e.window(), atom);
                             if is_root && !(atom == "WM_NAME" || atom == "_NET_WM_NAME") {
                                 None
                             } else {
@@ -1190,6 +1200,26 @@ impl XConn for XcbConnection {
             .collect()
     }
 
+    fn vec_prop(&self, id: u32, name: &str) -> Result<Vec<u32>> {
+        // xcb docs: https://www.mankier.com/3/xcb_get_property
+        let cookie = xcb::get_property(
+            &self.conn,       // xcb connection to X11
+            false,            // should the property be deleted
+            id,               // target window to query
+            self.atom(name)?, // the property we want
+            xcb::ATOM_ANY,    // the type of the property
+            0,                // offset in the property to retrieve data from
+            1024,             // how many 32bit multiples of data to retrieve
+        );
+
+	let reply = cookie.get_reply()?;
+        if reply.value_len() == 0 {
+            Err(anyhow!("property '{}' was empty for id: {}", name, id))
+        } else {
+            Ok(reply.value().to_vec())
+        }
+    }
+
     fn str_prop(&self, id: u32, name: &str) -> Result<String> {
         // xcb docs: https://www.mankier.com/3/xcb_get_property
         let cookie = xcb::get_property(
@@ -1295,4 +1325,9 @@ impl StubXConn for MockXConn {
     fn mock_is_managed_window(&self, id: WinId) -> bool {
         !self.unmanaged_ids.contains(&id)
     }
+    
+    fn vec_prop(&self, _: u32, _: &str) -> Result<Vec<u32>> {
+        Ok(vec![0])
+    }
+
 }

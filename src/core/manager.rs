@@ -382,6 +382,15 @@ impl<'a> WindowManager<'a> {
             name, id, class, ty
         );
 
+	let struts = match self.conn.vec_prop(id, "_NET_WM_STRUT_PARTIAL") {
+            Ok(s) => {
+		debug!("map request struts {:?}", s);
+		self.update_screen_from_struts(&s);
+		s},
+            Err(_) => vec![],
+        };
+
+	
         let floating = self.conn.window_should_float(id, self.floating_classes);
         let mut client = Client::new(id, name, class, self.active_ws_index(), floating);
         run_hooks!(new_client, self, &mut client);
@@ -470,6 +479,11 @@ impl<'a> WindowManager<'a> {
                 run_hooks!(client_name_updated, self, id, &name, is_root);
             }
         }
+	else if atom == "_NET_WM_STRUT_PARTIAL" {
+	    if let Ok(struts) = self.conn.vec_prop(id, atom) {
+		debug!("NET_VM_STRUT_PARTIAL for {:?}", struts);
+	    }
+	}
     }
 
     fn handle_client_message(&mut self, id: WinId, dtype: &str, data: &[usize]) {
@@ -522,6 +536,9 @@ impl<'a> WindowManager<'a> {
         }
     }
 
+    fn update_screen_from_struts(&mut self, struts: &Vec<u32>) {
+	self.screens.iter_mut().for_each(|s| s.update_effective_region_from_struts(&struts));
+    }
     /*
      * Public methods that can be triggered by user bindings
      *

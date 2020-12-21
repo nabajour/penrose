@@ -40,6 +40,15 @@ impl Screen {
         }
     }
 
+    pub fn update_effective_region_from_struts(&mut self, struts: &Vec<u32>) {
+        //let (x, y, w, h) = self.true_region.values();
+	debug!("update effective region from {:?}", self.effective_region);
+	let (x, y, w, h) = self.effective_region.values();
+	let (left, right, top, bottom) = (struts[0], struts[1], struts[2], struts[3]);
+        self.effective_region = Region::new(x + left, y + top, w - left - right, h - top - bottom);
+	debug!("update effective region to {:?}", self.effective_region);
+    }
+
     /// Cache the current effective region of this screen based on whether or not a bar is
     /// displayed and if that bar is positioned at the top or bottom of the screen.
     pub fn update_effective_region(&mut self, bar_height: u32, top_bar: bool) {
