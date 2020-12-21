@@ -334,6 +334,9 @@ pub trait XConn {
     /// Check to see if this window is one that we should be handling or not
     fn is_managed_window(&self, id: WinId) -> bool;
 
+    /// Determine whether the target window is a dock
+    fn window_is_dock(&self, id: WinId) -> bool;
+	
     /// Return the current (x, y, w, h) dimensions of the requested window
     fn window_geometry(&self, id: WinId) -> Result<Region>;
 
@@ -1126,6 +1129,15 @@ impl XConn for XcbConnection {
             32,                                  // data format (8/16/32-bit)
             &[wix as u32],                       // data
         );
+    }
+
+    fn window_is_dock(&self, id: WinId) -> bool {
+	if let Ok(atom) = self.atom_prop(id, Atom::NetWmWindowType.as_ref()) {
+	    debug!("check window dock property {:?}", &atom);
+            return atom == self.atoms[&Atom::NetWindowTypeDock];
+        }
+
+	false
     }
 
     fn window_should_float(&self, id: WinId, floating_classes: &[&str]) -> bool {

@@ -393,14 +393,28 @@ impl<'a> WindowManager<'a> {
 	
         let floating = self.conn.window_should_float(id, self.floating_classes);
         let mut client = Client::new(id, name, class, self.active_ws_index(), floating);
+	let dock = self.conn.window_is_dock(id);
+
         run_hooks!(new_client, self, &mut client);
         let wix = client.workspace();
 
+	if dock {
+	    // client.externally_managed();
+	    if let Ok(default_position) = self.conn.window_geometry(id) {
+                let (mut x, mut y, w, h) = default_position.values();
+                if let Some((_, s)) = self.indexed_screen_for_workspace(wix) {
+                    //let reg = s.region(false);
+		    let reg = Region::new(x,y,w,h);
+                    self.conn.position_window(id, reg, 0, false);
+                }
+            }
+	}
+	
         if client.wm_managed {
             self.add_client_to_workspace(wix, id);
         }
 
-        if client.floating {
+        if client.floating && !dock {
             if let Ok(default_position) = self.conn.window_geometry(id) {
                 let (mut x, mut y, w, h) = default_position.values();
                 if let Some((_, s)) = self.indexed_screen_for_workspace(wix) {
@@ -413,10 +427,12 @@ impl<'a> WindowManager<'a> {
             }
         }
 
+
+
         self.client_map.insert(id, client);
         self.conn.set_client_workspace(id, wix);
 
-        if wix == self.active_ws_index() {
+        if wix == self.active_ws_index() && !dock {
             self.conn.mark_new_window(id);
             self.conn.focus_client(id);
             self.client_gained_focus(id);
